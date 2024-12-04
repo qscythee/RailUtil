@@ -244,7 +244,7 @@ function DrawUtil.line(name: string, from: Vector3, to: Vector3, radius: number?
 		line.Shape = Enum.PartType.Cylinder
 	end
 	
-	line.CFrame = CFrame.lookAt(from, to) * CFrame.new(0, 0, -((from - to).Magnitude / 2))
+	line.CFrame = CFrame.lookAt(from, to) * CFrame.new(0, 0, -((from - to).Magnitude / 2)) * CFrame.Angles(0, math.pi / 2, 0)
 	line.Size = Vector3.new((from - to).Magnitude, radius, radius)
 	line.Color = color or Color3.new(1, 1, 1)
 
