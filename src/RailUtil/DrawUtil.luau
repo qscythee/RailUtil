@@ -207,7 +207,7 @@ function DrawUtil.point(name: string, position: Vector3 | CFrame, radius: number
 	end
 
 	point.Position = position
-	point.Size = Vector3.one * radius
+	point.Size = Vector3.one * radius :: number
 	point.Color = color
 
 	point.Parent = container

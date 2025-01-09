@@ -68,7 +68,7 @@ FusionUtil.isValue = isValue;
 	
 	The global scope for FusionUtil.
 ]=]
-FusionUtil.scope = nil :: Scope<Fusion, FusionUtil>
+FusionUtil.scope = nil :: Scope<typeof(Fusion) & typeof(FusionUtil)>
 
 
 --[=[
@@ -181,17 +181,17 @@ local TASK_SYMBOL = newproxy(false)
 ]=]
 function FusionUtil.removeTask(scope: Scope<any>, taskId: any, dontCleanup: boolean?): Task?
 	for i = 1, #scope do
-		local task = (scope :: any)[i]
-		if task[TASK_SYMBOL] and task.Id == taskId then
+		local tsk = (scope :: any)[i]
+		if typeof(tsk) == "table" and tsk[TASK_SYMBOL] and tsk.Id == taskId then
 			table.remove(scope, i)
 			if not dontCleanup then
-				local methodName = task.Deconstructor
+				local methodName = tsk.Deconstructor
 				if typeof(methodName) == "string" then
-					(task.Task :: any)[methodName]()
+					(tsk.Task :: any)[methodName](tsk)
 				end
-				Fusion.doCleanup(task.Task)
+				Fusion.doCleanup(tsk.Task)
 			end
-			return task.Task
+			return tsk.Task
 		end
 	end
 	return nil
@@ -203,7 +203,7 @@ end
 	Adds a task to a scope. If a taskId is provided, it will remove any existing task with that taskId.
 
 	@param scope    -- The scope to add the task to
-	@param task     -- The task to add
+	@param tsk     -- The task to add
 	@param methodName -- The method to call when the task is removed
 	@param taskId   -- The taskId of the task
 	@return Task    -- The task that was added
@@ -217,7 +217,7 @@ end
 	Fusion.doCleanup(s) -- Hello, World!
 	```
 ]=]
-function FusionUtil.addTask<T>(scope: Scope<any>, task: Task & T, methodName: any?, taskId: any?): T
+function FusionUtil.addTask<T>(scope: Scope<any>, tsk: Task & T, methodName: any?, taskId: any?): T
 	if taskId then
 		FusionUtil.removeTask(scope, taskId)
 	end
@@ -225,13 +225,13 @@ function FusionUtil.addTask<T>(scope: Scope<any>, task: Task & T, methodName: an
 	local taskContainer = {
 		[TASK_SYMBOL] = true,
 		Id = taskId,
-		Task = task, 
+		Task = tsk, 
 		Deconstructor = methodName,
 		Destroy = function()
 			if typeof(methodName) == "string" then
-				(task :: any)[methodName]()
+				(tsk :: any)[methodName](tsk)
 			end
-			Fusion.doCleanup(task :: any)
+			Fusion.doCleanup(tsk :: any)
 		end
 	}
 	table.insert(scope, taskContainer :: any)
