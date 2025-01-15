@@ -185,11 +185,7 @@ function FusionUtil.removeTask(scope: Scope<any>, taskId: any, dontCleanup: bool
 		if typeof(tsk) == "table" and tsk[TASK_SYMBOL] and tsk.Id == taskId then
 			table.remove(scope, i)
 			if not dontCleanup then
-				local methodName = tsk.Deconstructor
-				if typeof(methodName) == "string" then
-					(tsk.Task :: any)[methodName](tsk)
-				end
-				Fusion.doCleanup(tsk.Task)
+				tsk.Destroy()
 			end
 			return tsk.Task
 		end
@@ -222,16 +218,22 @@ function FusionUtil.addTask<T>(scope: Scope<any>, tsk: Task & T, methodName: any
 		FusionUtil.removeTask(scope, taskId)
 	end
 
+	if methodName and not (typeof(tsk) == "table" or typeof(tsk) == "Instance") then
+		warn("FusionUtil.addTask: methodName not supported for tasks of type:", typeof(tsk))
+	end
+
 	local taskContainer = {
 		[TASK_SYMBOL] = true,
 		Id = taskId,
-		Task = tsk, 
-		Deconstructor = methodName,
+		Task = tsk,
 		Destroy = function()
 			if typeof(methodName) == "string" then
 				(tsk :: any)[methodName](tsk)
+			elseif typeof(tsk) == "thread" then
+				task.cancel(tsk)
+			else
+				Fusion.doCleanup(tsk :: any)
 			end
-			Fusion.doCleanup(tsk :: any)
 		end
 	}
 	table.insert(scope, taskContainer :: any)
