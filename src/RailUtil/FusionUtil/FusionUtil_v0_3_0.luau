@@ -32,7 +32,7 @@ type State<T> = Fusion.StateObject<T>
 type UsedAs<T> = State<T> | T
 type Computed<T> = Fusion.Computed<T>
 type Observer = Fusion.Observer
-type Value<T, S> = Fusion.Value<T, S>
+type Value<T> = Fusion.Value<T, T>
 type Spring<T> = Fusion.Spring<T>
 type Tween<T> = Fusion.Tween<T>
 type For<K, V> = Fusion.For<K, V>
@@ -86,7 +86,7 @@ FusionUtil.scope = nil :: Scope<typeof(Fusion) & typeof(FusionUtil)>
 	```
 ]=]
 FusionUtil.scopeless = table.freeze {
-	Value = function<T>(value: T): Value<T, any>
+	Value = function<T>(value: T): Value<T, T>
 		return FusionUtil.scope:Value(value)
 	end;
 	Computed = function<T>(fn: (use: Use) -> T): Computed<T>
@@ -237,7 +237,7 @@ function FusionUtil.addTask<T>(scope: Scope<any>, tsk: Task & T, methodName: any
 		end
 	}
 	table.insert(scope, taskContainer :: any)
-	return task
+	return tsk
 end
 
 --[=[
@@ -261,9 +261,9 @@ end
 ]=]
 function FusionUtil.getTask<T>(scope: Scope<any>, taskId: any): Task?
 	for i = 1, #scope do
-		local task = (scope :: any)[i]
-		if task[TASK_SYMBOL] and task.Id == taskId then
-			return task.Task
+		local tsk = (scope :: any)[i]
+		if typeof(tsk) == "table" and tsk[TASK_SYMBOL] and tsk.Id == taskId then
+			return tsk.Task
 		end
 	end
 	return nil
@@ -606,13 +606,63 @@ end
 	disconnect()
 	```
 ]=]
-function FusionUtil.syncValues(scope: Scope<any>, stateToWatch: State<any>, valueToSet: Value<any, any>): () -> ()
+function FusionUtil.syncValues(scope: Scope<any>, stateToWatch: State<any>, valueToSet: Value<any>): () -> ()
 	valueToSet:set(peek(stateToWatch))
 	return Observer(scope, stateToWatch):onChange(function()
 		valueToSet:set(peek(stateToWatch))
 	end)
 end
 
+-- --[=[
+-- 	@within [0.3.0] FusionUtil
+-- 	@unreleased
+
+-- 	:::caution Unreleased
+-- 	:::
+
+-- 	Converts a state containing a dictionary into a similar dictionary where the values are states.
+-- 	This enables easier listening to changes in the dictionary values when using Fusion For objects.
+-- ]=]
+-- function FusionUtil.mapValuesToStates<K, V, V2=V>(scope: Scope<any>, state: UsedAs<{[K]: V}>, mutator: ((key: K, value: V) -> (V2))?): State<{[K]: State<V2>}>
+-- 	warn("FusionUtil.mapValuesToStates is not yet released")
+-- 	-- TODO: Finish this method!!!!
+-- 	local mappedDict = Fusion.Value(scope, {})
+-- 	mutator = mutator or function(_, v) return v end
+	
+-- 	Fusion.Observer(scope, state):onBind(function()
+-- 		local refDict = peek(state)
+-- 		local valuesDict = peek(mappedDict)
+-- 		local dictKeysChanged = false
+
+-- 		for key, value in refDict do
+-- 			if not valuesDict[key] then
+-- 				valuesDict[key] = Fusion.Value(s, mutator(key, value))
+-- 				dictKeysChanged = true
+-- 			else
+-- 				lastValue:set(mutator(value, key))
+-- 				newDict[key] = lastValue
+-- 			end
+-- 		end
+
+-- 		-- for key, value in valuesDict do
+-- 		-- 	local mutatedKey = mutator(refDict[key], key)
+-- 		-- 	if not refDict[key] then
+-- 		-- 		valuesDict[key] = nil
+-- 		-- 		dictKeysChanged = true
+-- 		-- 	end
+-- 		-- end
+
+-- 		if dictKeysChanged then
+-- 			mappedDict:set(newDict)
+-- 		end
+-- 	end)
+
+-- 	return mappedDict
+-- end
+
+--------------------------------------------------------------------------------
+	--// Array Util //--
+--------------------------------------------------------------------------------
 
 --[=[
 	@within [0.3.0] FusionUtil
@@ -621,7 +671,7 @@ end
 	Follows the structure of `table.insert` so giving an extra arg for the index will insert the value at that index.
 
 	@param valueState -- The container state object
-	@param ... (number, any) | (any)
+	@param ... (number, T) | T
 
 	```lua
 	local myArr = s:Value({"A", "B", "C"})
@@ -633,7 +683,7 @@ end
 	print( peek(myArr) ) -- {"A", "X", "B", "C", "Z"}
 	```
 ]=]
-function FusionUtil.arrayInsert(valueState: Value<{any}, any>, ...)
+function FusionUtil.arrayInsert<T>(valueState: Value<{T}>, ...)
 	local containerArray = peek(valueState)
 	table.insert(containerArray, ...)
 	if isValue(valueState) then
@@ -652,6 +702,8 @@ end
 	@param index      -- The index of the value to remove
 	@param swapRemove -- Whether to swap the value with the last value before removing it. This is faster than a regular remove but does not maintain the order of the array.
 
+	@return T -- The removed value
+
 	```lua
 	local myArr = s:Value({"A", "B", "C"})
 
@@ -660,7 +712,7 @@ end
 	print( removedValue ) -- "B"
 	```
 ]=]
-function FusionUtil.arrayRemove(valueState: Value<{any}, any>, index: number?, swapRemove: boolean?): any
+function FusionUtil.arrayRemove<T>(valueState: Value<{T}>, index: number?, swapRemove: boolean?): T
 	if swapRemove then
 		assert(index, "Expected an index to swap remove")
 		return FusionUtil.arraySwapRemove(valueState, index)
@@ -683,6 +735,8 @@ end
 	@param valueState -- The container state object
 	@param index -- the index of the value to swap out
 
+	@return T -- The value that was swapped out
+
 	```lua
 	local myArr = s:Value({"A", "B", "C"})
 
@@ -691,7 +745,7 @@ end
 	print( removedValue ) -- "A"
 	```
 ]=]
-function FusionUtil.arraySwapRemove(valueState: Value<{any}, any>, index: number): any
+function FusionUtil.arraySwapRemove<T>(valueState: Value<{T}>, index: number): T
 	local containerArray = peek(valueState)
 	local v = containerArray[index]
 	containerArray[index] = containerArray[#containerArray]
@@ -713,6 +767,8 @@ end
 	@param value      -- The value to remove
 	@param swapRemove -- Whether to swap the value with the last value before removing it. This is faster than a regular remove but does not maintain the order of the array.
 
+	@return number? -- The index of the removed value if found
+
 	```lua
 	local myArr = s:Value({"A", "B", "C"})
 
@@ -721,7 +777,7 @@ end
 	print( indexOfRemovedValue ) -- 1
 	```
 ]=]
-function FusionUtil.arrayRemoveFirstValue(valueState: Value<{any}, any>, value: any, swapRemove: boolean?): any
+function FusionUtil.arrayRemoveFirstValue<T>(valueState: Value<{T}>, value: T, swapRemove: boolean?): number?
 	local containerArray = peek(valueState)
 	local idx = table.find(containerArray, value)
 	if idx then
@@ -739,6 +795,8 @@ end
 	@param valueState -- The container state object
 	@param value      -- The value to remove
 
+	@return number? -- The index of the removed value if found
+
 	```lua
 	local myArr = s:Value({"A", "B", "C"})
 
@@ -746,7 +804,7 @@ end
 	print( peek(myArr) ) -- {"C", "B"}
 	```
 ]=]
-function FusionUtil.arraySwapRemoveFirstValue(valueState: Value<{any}, any>, value: any): any
+function FusionUtil.arraySwapRemoveFirstValue<T>(valueState: Value<{T}>, value: T): number?
 	return FusionUtil.arrayRemoveFirstValue(valueState, value, true)
 end
 
@@ -767,7 +825,7 @@ end
 	print( peek(myArr) ) -- {"A", "X", "C"}
 	```
 ]=]
-function FusionUtil.arraySet(valueState: Value<{any}, any>, index: number, newValue: any, updateInsteadOfReplace: boolean?)
+function FusionUtil.arraySet<T>(valueState: Value<{T}>, index: number, newValue: T, updateInsteadOfReplace: boolean?): T
 	local containerArray = peek(valueState)
 	if updateInsteadOfReplace then
 		if isValue(containerArray[index]) then
@@ -803,7 +861,7 @@ end
 	print( peek(myArr) ) -- {"A", "X", "C"}
 	```
 ]=]
-function FusionUtil.arraySetFirstValue(valueState: Value<{any}, any>, valueToFind: any, valueToReplaceWith: any, updateInsteadOfReplace: boolean?)
+function FusionUtil.arraySetFirstValue<T>(valueState: Value<{T}>, valueToFind: T, valueToReplaceWith: T, updateInsteadOfReplace: boolean?): T?
 	local containerArray = peek(valueState)
 	local idx = table.find(containerArray, valueToFind)
 	if idx then
