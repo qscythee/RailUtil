@@ -171,7 +171,7 @@ local TASK_SYMBOL = newproxy(false)
 	@return Task?      -- The task that was removed
 
 	```lua
-	local s = scoped(Fusion, FusionUtil)
+	local s = RailUtil.Fusion.scoped()
 
 	local id = "Greeting"
 	local task = s:addTask(function() print("Hello, World!") end, nil, id)
@@ -205,7 +205,7 @@ end
 	@return Task    -- The task that was added
 
 	```lua
-	local s = scoped(Fusion, FusionUtil)
+	local s = RailUtil.Fusion.scoped()
 
 	local id = "Greeting"
 	local task = s:addTask(function() print("Hello, World!") end, nil, id)
@@ -250,7 +250,7 @@ end
 	@return Task? -- The task if found, nil otherwise
 
 	```lua
-	local s = scoped(Fusion, FusionUtil)
+	local s = RailUtil.Fusion.scoped()
 
 	local id = "Greeting"
 	local task = s:addTask(function() print("Hello, World!") end, nil, id)
@@ -324,7 +324,7 @@ end
 	Also applies vice versa; when the scope is cleaned up, the instance will be destroyed.
 
 	```lua
-	local s = scoped(Fusion, FusionUtil)
+	local s = RailUtil.Fusion.scoped()
 
 	s:bindTo(s:New "Part" {
 		Anchored = true;
@@ -406,7 +406,7 @@ end
 	@return CanBeState<string>   -- The State<string> that is synced with the AssetId
 
 	```lua
-	local s = scoped(Fusion, FusionUtil)
+	local s = RailUtil.Fusion.scoped()
 
 	local assetId = s:formatAssetId("rbxefsefawsetid://1234567890")
 	print( peek(assetId) ) -- "rbxassetid://1234567890"
@@ -442,7 +442,7 @@ end
 	@return State<T>    -- The ratio (Potentially mutated)
 
 	```lua
-	local s = scoped(Fusion, FusionUtil)
+	local s = RailUtil.Fusion.scoped()
 
 	local numerator = s:Value(100)
 	local denominator = s:Value(200)
@@ -514,7 +514,7 @@ end
 	@return State<boolean>	-- A state resolving to the equality of the two given arguments
 
 	```lua
-	local s = scoped(Fusion, FusionUtil)
+	local s = RailUtil.Fusion.scoped()
 
 	local a = s:Value(10)
 	local b = s:Value(10)
@@ -563,7 +563,7 @@ end
 	@return () -> () -- A function to disconnect the syncronization of the two states
 
 	```lua
-	local s = scoped(Fusion, FusionUtil)
+	local s = RailUtil.Fusion.scoped()
 
 	local a = s:Value(10)
 	local b, disconnect = s:copyState(a)
@@ -593,7 +593,7 @@ end
 	@return () -> ()    -- A function that will disconnect the observer
 
 	```lua
-	local s = scoped(Fusion, FusionUtil)
+	local s = RailUtil.Fusion.scoped()
 
 	local a = s:Value(123)
 	local b = s:Value(0)
@@ -611,6 +611,42 @@ function FusionUtil.syncValues(scope: Scope<any>, stateToWatch: State<any>, valu
 	return Observer(scope, stateToWatch):onChange(function()
 		valueToSet:set(peek(stateToWatch))
 	end)
+end
+
+--[=[
+	@within [0.3.0] FusionUtil
+
+	Creates a State that is updated on RenderStepped.
+	The value of the State will contain a number representing the amount of time
+	that the clock has spent running.
+
+	@param scope
+	@param paused -- A State that can be used to pause the clock
+
+	```lua
+	local s = RailUtil.Fusion.scoped()
+
+	local clock = s:clock()
+
+	s:New "Part" {
+		Position = s:Computed(function(use)
+			local t = use(clock)
+			return Vector3.new(0, 5 + math.sin(t) * 5, 0)
+		end)
+	}
+	```
+]=]
+function FusionUtil.clock(scope: Scope<any>, , paused: State<boolean>?): Value<number>
+    local clockTime = Fusion.Value(scope, 0)
+    
+    local conn = RunService.RenderStepped:Connect(function(dt: number)
+        if not peek(paused) then
+            clockTime:set(peek(clockTime) + dt)
+        end
+    end)
+    table.insert(scope, conn)
+
+    return clockTime
 end
 
 -- --[=[
@@ -874,7 +910,7 @@ end
 	--// SPECIAL //--
 --------------------------------------------------------------------------------
 
-FusionUtil.scope = Fusion.scoped(Fusion, FusionUtil)
+FusionUtil.scope = Fusion.RailUtil.Fusion.scoped()
 export type FUS = typeof(FusionUtil.scope)
 
 local comboTbl
