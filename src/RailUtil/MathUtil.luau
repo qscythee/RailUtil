@@ -150,7 +150,7 @@ function MathUtil.tryRandom(data: number | NumberRange | NumberSequence | { numb
 	elseif typeof(data) == "NumberSequence" then
 		return MathUtil.randomFromNumberSequence(data)
 	else
-		error("Invalid data type.")
+		error("Invalid data type. Got type: " .. typeof(data))
 	end
 end
 
