@@ -910,7 +910,7 @@ end
 	--// SPECIAL //--
 --------------------------------------------------------------------------------
 
-FusionUtil.scope = Fusion.RailUtil.Fusion.scoped()
+FusionUtil.scope = Fusion:scoped(FusionUtil)
 export type FUS = typeof(FusionUtil.scope)
 
 local comboTbl
