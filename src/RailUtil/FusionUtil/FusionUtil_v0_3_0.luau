@@ -64,7 +64,7 @@ FusionUtil.isValue = isValue;
 
 --[=[
 	@within [0.3.0] FusionUtil
-	@prop scope Scope<Fusion, FusionUtil>
+	@prop scope Scope<FusionUtil>
 	
 	The global scope for FusionUtil.
 ]=]
@@ -636,7 +636,7 @@ end
 	}
 	```
 ]=]
-function FusionUtil.clock(scope: Scope<any>, , paused: State<boolean>?): Value<number>
+function FusionUtil.clock(scope: Scope<any>, paused: State<boolean>?): Value<number>
     local clockTime = Fusion.Value(scope, 0)
     
     local conn = RunService.RenderStepped:Connect(function(dt: number)
