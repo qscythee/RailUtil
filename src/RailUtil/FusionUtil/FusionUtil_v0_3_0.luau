@@ -12,6 +12,9 @@
 	:::
 ]=]
 
+--// Services //--
+local RunService = game:GetService("RunService")
+
 --// Requires //--
 local Util = script.Parent.Parent
 local MathUtil = require(Util.MathUtil)
