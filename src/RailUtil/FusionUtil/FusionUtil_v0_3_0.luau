@@ -10,6 +10,13 @@
 	DO NOT ACCESS THIS IN MULTIPLE VMs (Parallel Luau). Studio freaks out when
 	fusion is loaded in multiple VMs for some unknown reason.
 	:::
+
+	:::tip
+	If you see a variable `s` being used in the examples, you can assume it is a Fusion Scope equivalent to the following:
+	```lua
+	local s = RailUtil.Fusion:scoped()
+	```
+	:::
 ]=]
 
 --// Services //--
@@ -63,6 +70,14 @@ local FusionUtil = {}
 	Checks if the arg is a Fusion StateObject.
 ]=]
 FusionUtil.isState = isState;
+
+--[=[
+	@within [0.3.0] FusionUtil
+	@function isValue
+	@param arg any
+	@return boolean
+	Checks if the arg is a Fusion Value.
+]=]
 FusionUtil.isValue = isValue;
 
 --[=[
@@ -174,8 +189,6 @@ local TASK_SYMBOL = newproxy(false)
 	@return Task?      -- The task that was removed
 
 	```lua
-	local s = RailUtil.Fusion.scoped()
-
 	local id = "Greeting"
 	local task = s:addTask(function() print("Hello, World!") end, nil, id)
 
@@ -363,7 +376,7 @@ end
     
     @return StateObject<T> -- The existing or newly created state object
 ]=]
-function FusionUtil.ensureIsState<T>(scope: Scope<any>, data: UsedAs<T>?, defaultValue: T?, datatype: (string | { string })?): State<T>
+function FusionUtil.ensureIsState<T>(scope: Scope<any>, data: UsedAs<T>?, defaultValue: T, datatype: (string | { string })?): State<T>
     -- Handle case where data is nil by defaulting to the defaultValue
     if data == nil then
         return Value(scope, defaultValue) :: any
@@ -396,6 +409,55 @@ function FusionUtil.ensureIsState<T>(scope: Scope<any>, data: UsedAs<T>?, defaul
         -- Wrap non-state data in a state object within the given scope
         return Value(scope, data) :: any
     end
+end
+
+--[=[
+    @within [0.3.0] FusionUtil
+
+    Ensures a passed data is a Value. If it is not, it will be converted to one.
+
+    @param scope        -- The scope in which to create the new state object
+    @param data         -- The potential state object
+    @param defaultValue -- The default value to use if the data is nil
+    @param datatype     -- The type or types of the data expected in the state
+    
+    @return Value<T> -- The existing or newly created state object
+]=]
+function FusionUtil.ensureIsValue<T>(scope: Scope<any>, data: UsedAs<T>, defaultValue: T, datatype: (string | { string })?): Value<T>
+	-- Handle case where data is nil by defaulting to the defaultValue
+	if data == nil then
+		return Value(scope, defaultValue)
+	end
+
+	-- If a datatype is specified, ensure data conforms to the expected type
+	if datatype then
+		-- Ensure datatype is a table
+		if typeof(datatype) == "string" then
+			datatype = { datatype }
+		end
+
+		-- Validate the data type
+		local dType = typeof(peek(data))
+		if not table.find(datatype :: {string}, dType) then
+			warn(
+				"FusionUtil.ensureIsState: Expected data to be of type",
+				table.concat(datatype :: {string}, ", "),
+				", got " .. dType .. ". Defaulting to",
+				defaultValue
+			)
+			return Value(scope, defaultValue) :: any
+		end
+	end
+
+	-- Check if data is already a state object
+	if isValue(data) then
+		return data
+	else
+		if isState(data) then
+			warn("FusionUtil.ensureIsValue: Expected a Value, got a State. ", data, "\n", debug.traceback())
+		end
+		return Value(scope, peek(data))
+	end
 end
 
 --[=[
@@ -462,7 +524,7 @@ function FusionUtil.ratio<T>(
 ): Computed<T>
 	return Computed(scope, function(use)
 		local a: number = use(numerator)
-		local b: number = use(denominator)
+		local b: number = use(denominator) or 1
 		local ratio = a / b
 		mutator = use(mutator)
 		if mutator then
@@ -474,6 +536,70 @@ function FusionUtil.ratio<T>(
 		end
 		return ratio :: T | any
 	end)
+end
+
+--[=[
+	@within [0.3.0] FusionUtil
+
+	Wraps FusionUtil.ratio with a handler for UDim2s
+
+	@param scope
+	@param numerator     -- The numerator of the ratio
+	@param denominator   -- The denominator of the ratio
+	@param v             -- The UDim2 to scale
+	@return State<UDim2> -- The scaled UDim2
+
+	```lua
+	local numerator = s:Value(100)
+	local denominator = s:Value(200)
+	local size = s:Value(UDim2.new(0.2, 100, 0.2, 100))
+	local sizeAdjusted = s:ratioUDim2(numerator, denominator, size)
+	print( peek(sizeAdjusted) ) -- UDim2.new(0.1, 50, 0.1, 50)
+	```
+]=]
+function FusionUtil.ratioUDim2(
+	scope: Scope<any>,
+	numerator: UsedAs<number>,
+	denominator: UsedAs<number>,
+	v: UsedAs<UDim2>
+): State<UDim2>
+	return FusionUtil.ratio(scope, numerator, denominator, function(ratio, use)
+		v = use(v) :: UDim2
+		return UDim2.new(v.X.Scale * ratio, v.X.Offset * ratio, v.Y.Scale * ratio, v.Y.Offset * ratio)
+	end) :: any -- silence warning
+end
+
+--[=[
+	@within [0.3.0] FusionUtil
+	@client
+
+	This wraps FusionUtil.ratio with a handler for scaling states/functions with the Screen Height.
+
+	@param mutator -- An optional State to scale by or a function to mutate the ratio
+	@param ratioFn any -- An optional function to use for the ratio, defaults to FusionUtil.ratio, but could be given something like FusionUtil.ratioUDim2
+
+	```lua
+	local paddingOffset = s:Value(10)
+
+	local paddingAdjusted = s:screenRatio(paddingOffset)
+	```
+	```lua
+	local size = Value(UDim2.new(0, 100, 0, 100))
+
+	local sizeAdjusted = s:screenRatio(size, FusionUtil.ratioUDim2)
+	```
+	```lua
+	local x = s:Value(10)
+	local y = s:Value(20)
+	local z = s:screenRatio(function(ratio, use)
+		return (use(x) + use(y)) * ratio
+	end)
+	```
+]=]
+function FusionUtil.screenRatio<T>(scope: Scope<any>, mutator: (UsedAs<T> | (ratio: number, use: Use) -> T)?, ratioFn)
+	ratioFn = ratioFn or FusionUtil.ratio
+	local CameraUtil = require(Util.CameraUtil)
+	return ratioFn(scope, CameraUtil.ViewportSizeY :: any, 1080, mutator)
 end
 
 --[=[
@@ -582,14 +708,15 @@ function FusionUtil.copyState<T>(scope: Scope<any>, state: UsedAs<T>): (State<T>
 		return stateCopy, function() end
 	end
 	return stateCopy, Fusion.Observer(scope, state):onChange(function()
-		Fusion.Value(scope, peek(state))
-	end) :: any
+		stateCopy:set(peek(state))
+	end) :: () -> ()
 end
 
 --[=[
 	@within [0.3.0] FusionUtil
 
 	Syncronizes a StateObject to a Value. The Value will be set to the StateObject's value any time it changes.
+	Functions similarly to FusionUtil.copyState but requires you to give it the Value StateObject to update.
 
 	@param stateToWatch -- The state to watch for changes
 	@param valueToSet   -- The value to set when the state changes
