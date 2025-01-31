@@ -954,6 +954,15 @@ end
 	@param array {T} -- The array to parse
 	@param fn (T, number) -> (K, V) -- A function to transform the index
 	@return {[K]: V} -- The new dictionary
+	
+	```lua
+	local array = {97, 98, 99}
+	local dict = TableUtil.ToDict(array, function(value)
+		return string.char(value), value
+	end)
+
+	print(dict) --> {["a"] = 97, ["b"] = 98, ["c"] = 99}
+	```
 ]=]
 function TableUtil.ToDict<T, K, V>(array: { T }, fn: (T, number) -> (K, V)): { [K]: V }
 	local dict = {}
@@ -975,6 +984,101 @@ function TableUtil.Weak<T>(tbl: T, mode: string?): T
 	assert(not mode or mode == "k" or mode == "v" or mode == "kv", "Invalid mode")
 	assert(not tbl or (typeof(tbl) == "table" and not getmetatable(tbl)), "Invalid table")
 	return setmetatable(tbl :: any or {}, { __mode = mode or "k" })
+end
+
+
+--[=[
+	@within TableUtil
+	
+	Runs a greedy mesh algorithm on a 2D grid to find all rectangles of filled cells.
+	@param grid -- The 2D grid to search. Treats it as grid[X][Y]
+	@param isValid -- An optional function to determine if a cell is valid. Defaults to checking the 'truthiness' of the cell.
+	@return {{Position: Vector2, Size: Vector2}} -- An array of rectangles defined by a ***bottom-left*** position and a size.
+
+	```lua
+	local grid = {
+		{true, true, false, false},
+		{true, true, false, false},
+		{false, false, true, true},
+		{false, false, true, true},
+		{false, false, true, true},
+	}
+
+	local result = TableUtil.GreedyMesh2D(grid)
+
+	for _, rect in result do
+		print("Position:", rect.Position, "| Size:", rect.Size)
+	end
+	```
+	```
+	Position: 1, 1 | Size: 2, 2
+	Position: 3, 3 | Size: 2, 3
+	```
+]=]
+function TableUtil.GreedyMesh2D<T>(grid: {{T}}, isValid: ((node: T, X: number, Y: number) -> (boolean))?): {{Position: Vector2, Size: Vector2}}
+	local rows = #grid
+    local cols = #grid[1]
+    local visited = table.create(rows) -- Track processed cells
+    local rects = {} -- Store the resulting rectangles
+
+	local isValidCallback = isValid or function(node: T, Y: number, X: number): boolean
+		return not not node
+	end
+
+    -- Initialize visited grid
+    for r = 1, rows do
+        visited[r] = table.create(cols, false)
+    end
+
+    -- Function to expand a rectangle
+    local function findMaxRectangle(startRow: number, startCol: number)
+        local width = 0
+        local height = 0
+
+        -- Expand width
+        while (startCol + width <= cols) and grid[startRow][startCol + width] and not visited[startRow][startCol + width] do
+            width += 1
+        end
+
+        -- Expand height while maintaining width
+        while (startRow + height <= rows) do
+            for w = 0, width - 1 do
+				local X = startRow + height
+				local Y = startCol + w
+                if not isValidCallback(grid[X][Y], X, Y) or visited[X][Y] then
+                    return width, height -- Stop expanding if the row doesn't match
+                end
+            end
+            height += 1
+        end
+
+        return width, height
+    end
+
+    -- Iterate over the grid to find and merge rectangles
+    for r = 1, rows do
+        for c = 1, cols do
+            if grid[r][c] and not visited[r][c] then
+                -- Find the max rectangle from this starting cell
+                local width, height = findMaxRectangle(r, c)
+
+                -- Mark the cells as visited
+                for i = 0, height - 1 do
+                    for j = 0, width - 1 do
+                        visited[r + i][c + j] = true
+                    end
+                end
+
+                -- Store the rectangle (x, y, width, height)
+                table.insert(rects, {
+					Position =  Vector2.new(r, c),
+					Size = Vector2.new(width, height)
+				})
+            end
+        end
+    end
+
+    return rects
 end
 
 return TableUtil
