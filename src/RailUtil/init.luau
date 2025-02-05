@@ -47,14 +47,14 @@
 
 --[=[
 	@within RailUtil
-	@prop Fusion FusionUtil
-	The FusionUtil module.
+	@prop String StringUtil
+	The StringUtil module.
 ]=]
 
 --[=[
 	@within RailUtil
-	@prop String StringUtil
-	The StringUtil module.
+	@prop Fusion FusionUtil
+	The FusionUtil module.
 ]=]
 
 --[=[
@@ -63,17 +63,36 @@
 	The CameraUtil module.
 ]=]
 
-local DrawUtil : typeof(require(script.DrawUtil)) = nil
+--[=[
+	@within RailUtil
+	@prop Input InputUtil
+	The InputUtil module.
+]=]
+
+--[=[
+	@within RailUtil
+	@prop Draw DrawUtil
+	The DrawUtil module.
+]=]
+
+--[=[
+	@within RailUtil
+	@prop Debug DebugUtil
+	The DebugUtil module.
+]=]
+
 local MathUtil : typeof(require(script.MathUtil)) = nil
-local VectorUtil : typeof(require(script.VectorUtil)) = nil
 local TableUtil : typeof(require(script.TblUtil)) = nil
-local DebugUtil : typeof(require(script.DebugUtil)) = nil
-local SignalUtil : typeof(require(script.SignalUtil)) = nil
+local VectorUtil : typeof(require(script.VectorUtil)) = nil
 local PlayerUtil : typeof(require(script.PlayerUtil)) = nil
 local InstanceUtil : typeof(require(script.InstanceUtil)) = nil
-local FusionUtil : typeof(require(script.FusionUtil)) = nil
 local StringUtil : typeof(require(script.StringUtil)) = nil
 local CameraUtil : typeof(require(script.CameraUtil)) = nil
+local InputUtil : typeof(require(script.InputUtil)) = nil
+local FusionUtil : typeof(require(script.FusionUtil)) = nil
+local DrawUtil : typeof(require(script.DrawUtil)) = nil
+local DebugUtil : typeof(require(script.DebugUtil)) = nil
+local SignalUtil : typeof(require(script.SignalUtil)) = nil
 
 local scriptRefs = {
 	Math = script:FindFirstChild("MathUtil"),
@@ -87,6 +106,7 @@ local scriptRefs = {
 	String = script:FindFirstChild("StringUtil"),
 	Camera = script:FindFirstChild("CameraUtil"),
 	Draw = script:FindFirstChild("DrawUtil"),
+	Input = script:FindFirstChild("InputUtil"),
 }
 
 -- I have a metatable redirecting all these because roblox
@@ -121,6 +141,7 @@ local Util = {
 	Fusion = FusionUtil,
 	String = StringUtil,
 	Camera = CameraUtil,
+	Input = InputUtil,
 }
 
 setmetatable(Util, UtilMT)

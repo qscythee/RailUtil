@@ -9,3 +9,7 @@ classes = ["--------"]
 [[classOrder]]
 section = "FusionUtil"
 classes = ["FusionUtil", "[0.3.0] FusionUtil", "[0.2.5] FusionUtil", "[0.2.0] FusionUtil"]
+
+[[classOrder]]
+section = "InputUtil"
+classes = ["InputUtil", "PreferredInput", "Mouse", "Keyboard", "Touch", "Gamepad"]
