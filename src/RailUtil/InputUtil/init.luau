@@ -14,9 +14,8 @@
     - [Keyboard](/api/Keyboard)
     - [Touch](/api/Touch)
     - [Gamepad](/api/Gamepad)
-    - [Enums](/api/Enums)
 
-    Reference the desired input modules via the Input package to get started:
+    Reference the desired input modules via the RailUtil .Input index to get started:
 
     ```lua
     local Input = require(Packages.RailUtil).Input
@@ -25,7 +24,6 @@
     local Keyboard = Input.Keyboard
     local Touch = Input.Touch
     local Gamepad = Input.Gamepad
-    local InputEnums = Input.Enums
     ```
 ]=]
 

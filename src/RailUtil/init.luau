@@ -7,78 +7,37 @@
 	RailUtil is a collection of utility libraries created by Logan Hunt (Raildex).
 
 	This module serves as an entrypoint to each of the sub libraries.
-]=]
 
---[=[
-	@within RailUtil
-	@prop Math MathUtil
-	The MathUtil module.
-]=]
+	- [Math](/api/MathUtil)
+	- [Vector](/api/VectorUtil)
+	- [Table](/api/TableUtil)
+	- [String](/api/StringUtil)
+	- [Player](/api/PlayerUtil)
+	- [Instance](/api/InstanceUtil)
+	- [Input](/api/InputUtil)
+	- [Signal](/api/SignalUtil)
+	- [Camera](/api/CameraUtil)
+	- [Fusion](/api/FusionUtil)
+	- [Draw](/api/DrawUtil)
+	- [Debug](/api/DebugUtil)
 
---[=[
-	@within RailUtil
-	@prop Vector VectorUtil
-	The VectorUtil module.
-]=]
+	Reference the desired utility modules via the RailUtil package to get started:
 
---[=[
-	@within RailUtil
-	@prop Table TableUtil
-	The TableUtil module.
-]=]
-
---[=[
-	@within RailUtil
-	@prop Signal SignalUtil
-	The SignalUtil module.
-]=]
-
---[=[
-	@within RailUtil
-	@prop Player PlayerUtil
-	The PlayerUtil module.
-]=]
-
---[=[
-	@within RailUtil
-	@prop Instance InstanceUtil
-	The InstanceUtil module.
-]=]
-
---[=[
-	@within RailUtil
-	@prop String StringUtil
-	The StringUtil module.
-]=]
-
---[=[
-	@within RailUtil
-	@prop Fusion FusionUtil
-	The FusionUtil module.
-]=]
-
---[=[
-	@within RailUtil
-	@prop Camera CameraUtil
-	The CameraUtil module.
-]=]
-
---[=[
-	@within RailUtil
-	@prop Input InputUtil
-	The InputUtil module.
-]=]
-
---[=[
-	@within RailUtil
-	@prop Draw DrawUtil
-	The DrawUtil module.
-]=]
-
---[=[
-	@within RailUtil
-	@prop Debug DebugUtil
-	The DebugUtil module.
+	```lua
+	local RailUtil = require(Packages.RailUtil)
+	local MathUtil = RailUtil.Math
+	local TableUtil = RailUtil.Table
+	local StringUtil = RailUtil.String
+	local VectorUtil = RailUtil.Vector
+	local SignalUtil = RailUtil.Signal
+	local PlayerUtil = RailUtil.Player
+	local InstanceUtil = RailUtil.Instance
+	local InputUtil = RailUtil.Input
+	local CameraUtil = RailUtil.Camera
+	local FusionUtil = RailUtil.Fusion
+	local DrawUtil = RailUtil.Draw
+	local DebugUtil = RailUtil.Debug
+	```
 ]=]
 
 local MathUtil : typeof(require(script.MathUtil)) = nil
