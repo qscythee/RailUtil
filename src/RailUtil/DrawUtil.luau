@@ -16,6 +16,7 @@
 	```
 ]=]
 
+local HttpService = game:GetService("HttpService")
 type PartProps = {
 	Name: string?,
 	CFrame: CFrame?,
@@ -65,7 +66,11 @@ end
 	DrawUtil.vector("MyVector", Vector3.new(0, 0, 0), Vector3.new(10, 10, 10), Color3.new(1, 0, 0), 1)
 	```
 ]=]
-function DrawUtil.vector(name: string, from: (Vector3 | CFrame | PVInstance | Attachment), to: (Vector3 | CFrame | PVInstance | Attachment)?, color: Color3?, _scale: number?)
+function DrawUtil.vector(name: string?, from: (Vector3 | CFrame | PVInstance | Attachment), to: (Vector3 | CFrame | PVInstance | Attachment)?, color: Color3?, _scale: number?)
+	if not name then
+		name = HttpService:GenerateGUID(false)
+	end
+
 	if typeof(from) == "Instance" then
 		if from:IsA("PVInstance") then
 			from = from:GetPivot()

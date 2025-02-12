@@ -1,4 +1,5 @@
 --!strict
+--!native
 -- Logan Hunt [Raildex]
 -- Nov 22, 2022
 --[=[

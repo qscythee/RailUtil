@@ -208,6 +208,7 @@ function FusionUtil.removeTask(scope: Scope<any>, taskId: any, dontCleanup: bool
 	end
 	return nil
 end
+FusionUtil.RemoveTask = FusionUtil.removeTask
 
 --[=[
 	@within [0.3.0] FusionUtil
@@ -255,6 +256,7 @@ function FusionUtil.addTask<T>(scope: Scope<any>, tsk: Task & T, methodName: any
 	table.insert(scope, taskContainer :: any)
 	return tsk
 end
+FusionUtil.AddTask = FusionUtil.addTask
 
 --[=[
 	@within [0.3.0] FusionUtil
@@ -284,6 +286,7 @@ function FusionUtil.getTask<T>(scope: Scope<any>, taskId: any): Task?
 	end
 	return nil
 end
+FusionUtil.GetTask = FusionUtil.getTask
 
 --------------------------------------------------------------------------------
 --// METHODS //--
