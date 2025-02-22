@@ -271,7 +271,7 @@ function PlayerUtil.forEachCharacter(func: (char: Character, janitor: Janitor) -
 			CharacterData[plr] = nil
 		end)
 
-		--charJani:Add(task.spawn(func, char, charJani))
+		charJani:Add(task.spawn(func, char, charJani))
 		jani:Add(charJani, "Destroy", tostring(plr.UserId) .. "_CharJani")
 
 		debug.profileend()
