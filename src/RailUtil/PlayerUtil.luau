@@ -166,7 +166,6 @@ function PlayerUtil.promiseCharacter(plr: Player, timeOut: number?): Promise<Cha
 			end
 
 			local prom = Promise.fromEvent(folder.ChildAdded, function(child)
-				print("CharacterFolderOk->ChildAdded")
 				debug.profilebegin("ChildAdded->Character")
 				return child == plr.Character
 			end)
@@ -284,7 +283,6 @@ function PlayerUtil.forEachCharacter(func: (char: Character, janitor: Janitor) -
 
 		jani:Add(
 			newPlr.CharacterAdded:Connect(function()
-				print("CharacterAdded")
 				debug.profilebegin(CONTEXT_STR .. "CharacterAdded->promiseCharacter->CheckChar")
 				jani:AddPromise(PlayerUtil.promiseCharacter(newPlr, 5):andThen(CheckChar))
 				debug.profileend()
@@ -344,7 +342,6 @@ function PlayerUtil.forEachPlayer(func: (player: Player, janitor: Janitor) -> ()
 	local cleanerConnection = createCleanerConnection(jani)
 
 	local function CheckPlayer(player: Player)
-		print("Check player")
 		debug.profilebegin(CONTEXT_STR .. "CheckPlayer")
 		if table.find(SetupPlayersList, player) then return end
 		table.insert(SetupPlayersList, player)
