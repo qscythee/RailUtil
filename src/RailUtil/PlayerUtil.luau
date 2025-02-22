@@ -43,6 +43,7 @@ type Character = Model & {
 local isSetupCharacterInitialization = nil
 local CHARACTERS_FOLDER_NAME = "Characters"
 local CONNECTION_COUNT = if RunService:IsServer() then 0 else 1
+local CONTEXT_STR = if RunService:IsServer() then "[SERVER] " else "[CLIENT] "
 
 local WeakTable = { __mode = "kv" }
 
@@ -99,20 +100,29 @@ local PlayerUtil = {}
 	@return Folder -- The characters folder
 ]=]
 function PlayerUtil.getCharactersFolder(): Folder
+	debug.profilebegin(CONTEXT_STR .. "getCharactersFolder")
+
 	local CharactersFolder: Folder = _GetCharactersFolder()
 	if not CharactersFolder then
 		if RunService:IsServer() then
+			debug.profilebegin(CONTEXT_STR .. "createCharactersFolder")
+
 			warn("Failed to find Characters folder! Creating...")
 			warn("Please create a folder named 'Characters' in workspace ahead of time.")
 			local newFolder = Instance.new("Folder")
 			newFolder.Name = CHARACTERS_FOLDER_NAME
 			newFolder.Parent = workspace
 			CharactersFolder = newFolder
+
+			debug.profileend()
 		else
 			warn("Failed to find characters folder! Waiting...")
 			CharactersFolder = workspace:WaitForChild(CHARACTERS_FOLDER_NAME)
 		end
 	end
+
+	debug.profileend()
+
 	assert(CharactersFolder, "Characters folder not found! (PlayerUtil.lua)")
 	return CharactersFolder
 end
@@ -132,32 +142,37 @@ end
 	@return Promise<Character> -- A promise that resolves when the character is retrieved
 ]=]
 function PlayerUtil.promiseCharacter(plr: Player, timeOut: number?): Promise<Character>
+	debug.profilebegin(CONTEXT_STR .. "promiseCharacter")
+
 	if _GetCharactersFolder() == nil then -- don't wait for characters folder if it doesn't exist
 		if plr.Character then
+			debug.profileend()
 			return Promise.resolve(plr.Character)
 		else
 			local prom = Promise.fromEvent(plr.CharacterAdded)
-			if timeOut then
-				prom = prom:timeout(timeOut, "Timed out waiting for character!")
-			end
+			if timeOut then prom = prom:timeout(timeOut, "Timed out waiting for character!") end
+			debug.profileend()
 			return prom
 		end
 	else
-
 		return PlayerUtil.promiseCharactersFolder():andThen(function(folder)
+			debug.profilebegin(CONTEXT_STR .. "promiseCharacter")
+
 			local char = plr.Character
 			if char and char:IsDescendantOf(folder) then
 				return Promise.resolve(char)
 			elseif timeOut and timeOut == 0 then
 				return Promise.reject("Character not found")
 			end
-	
-			local prom = Promise.fromEvent(folder.DescendantAdded, function(child)
+
+			local prom = Promise.fromEvent(folder.ChildAdded, function(child)
+				print("CharacterFolderOk->ChildAdded")
+				debug.profilebegin("ChildAdded->Character")
 				return child == plr.Character
 			end)
-			if timeOut then
-				prom = prom:timeout(timeOut, "Timed out waiting for character!")
-			end
+			if timeOut then prom = prom:timeout(timeOut, "Timed out waiting for character!") end
+
+			debug.profileend()
 			return prom
 		end)
 	end
@@ -173,9 +188,7 @@ PlayerUtil.getCharacter = PlayerUtil.promiseCharacter
 ]=]
 function PlayerUtil.getPlayerFromCharacterDescendant(descendant: Instance): Player?
 	for _, plr: Player in ipairs(Players:GetPlayers()) do
-		if plr.Character and descendant:IsDescendantOf(plr.Character) then
-			return plr
-		end
+		if plr.Character and descendant:IsDescendantOf(plr.Character) then return plr end
 	end
 	return nil
 end
@@ -188,14 +201,15 @@ end
 	@return Character? -- The character that owns the descendant
 ]=]
 function PlayerUtil.getCharacterFromDescendant(descendant: Instance): Character?
-	if not descendant:IsDescendantOf(PlayerUtil.getCharactersFolder()) then
-		return nil
-	end
+	debug.profilebegin(CONTEXT_STR .. "getCharacterFromDescendant")
+
+	if not descendant:IsDescendantOf(PlayerUtil.getCharactersFolder()) then return nil end
 	for _, char in PlayerUtil.getAllLoadedCharacters() do
-		if descendant:IsDescendantOf(char) then
-			return char
-		end
+		debug.profilebegin(CONTEXT_STR .. "IsDescendantOf")
+		if descendant:IsDescendantOf(char) then return char end
+		debug.profileend()
 	end
+	debug.profileend()
 	return nil
 end
 
@@ -203,14 +217,18 @@ end
 	@return {Character} -- A table of all the fully loaded characters
 ]=]
 function PlayerUtil.getAllLoadedCharacters(): { Character }
+	debug.profilebegin(CONTEXT_STR .. "getAllLoadedCharacters")
+
 	local characters = {}
 	local charFolder = PlayerUtil.getCharactersFolder()
 	for _, plr: Player in Players:GetPlayers() do
 		local char = plr.Character
-		if char and char:IsDescendantOf(charFolder) then
-			table.insert(characters, char)
-		end
+		debug.profilebegin(CONTEXT_STR .. "IsDescendantOf")
+		if char and char:IsDescendantOf(charFolder) then table.insert(characters, char) end
+		debug.profileend()
 	end
+
+	debug.profileend()
 	return characters :: any
 end
 
@@ -223,6 +241,8 @@ end
 	@return Connection 	-- A connection that can be Disconnected or Destroyed to stop method's activities.
 ]=]
 function PlayerUtil.forEachCharacter(func: (char: Character, janitor: Janitor) -> (), player: Player?): Connection
+	debug.profilebegin("forEachCharacter")
+
 	assertFunction(func)
 	assertPlayer(player)
 
@@ -233,39 +253,50 @@ function PlayerUtil.forEachCharacter(func: (char: Character, janitor: Janitor) -
 	local cleanerConnection = createCleanerConnection(jani)
 
 	local function CheckChar(char: Character)
+		debug.profilebegin(CONTEXT_STR .. "CheckChar")
+
 		assert(cleanerConnection:IsConnected(), "Connection already disconnected.")
 		assert(char, "Character is nil.")
+
+		debug.profilebegin(CONTEXT_STR .. "GetPlayerFromCharacter")
 		local plr = Players:GetPlayerFromCharacter(char)
+		debug.profileend()
+
 		assert(plr, "Character does not belong to a player.")
 
-		if CharacterData[plr] then
-			return warn("Already setup Character:", char, traceback)
-		end
+		if CharacterData[plr] then return warn("Already setup Character:", char, traceback) end
 
 		local charJani = Janitor.new()
 		charJani:Add(function()
 			CharacterData[plr] = nil
 		end)
 
-		charJani:Add(task.spawn(func, char, charJani))
+		--charJani:Add(task.spawn(func, char, charJani))
 		jani:Add(charJani, "Destroy", tostring(plr.UserId) .. "_CharJani")
+
+		debug.profileend()
 	end
 
 	local function SetupPlayer(newPlr: Player)
+		debug.profilebegin(CONTEXT_STR .. "SetupPlayer")
+
 		local plrId = tostring(newPlr.UserId)
 
 		jani:Add(
 			newPlr.CharacterAdded:Connect(function()
+				print("CharacterAdded")
+				debug.profilebegin(CONTEXT_STR .. "CharacterAdded->promiseCharacter->CheckChar")
 				jani:AddPromise(PlayerUtil.promiseCharacter(newPlr, 5):andThen(CheckChar))
+				debug.profileend()
 			end),
 			"Disconnect",
 			plrId .. "_CharacterAdded"
 		)
-	
-		if newPlr.Character then
-			jani:AddPromise(PlayerUtil.promiseCharacter(newPlr, 5):andThen(CheckChar))
-		end
-	
+
+		debug.profilebegin(CONTEXT_STR .. "CharacterAdded->promiseCharacter->CheckChar")
+		if newPlr.Character then jani:AddPromise(PlayerUtil.promiseCharacter(newPlr, 5):andThen(CheckChar)) end
+		debug.profileend()
+
 		jani:Add(
 			newPlr.CharacterRemoving:Connect(function()
 				jani:Remove(plrId .. "_CharJani")
@@ -273,6 +304,8 @@ function PlayerUtil.forEachCharacter(func: (char: Character, janitor: Janitor) -
 			"Disconnect",
 			plrId .. "_CharacterRemoving"
 		)
+
+		debug.profileend()
 	end
 
 	if player then
@@ -281,7 +314,9 @@ function PlayerUtil.forEachCharacter(func: (char: Character, janitor: Janitor) -
 			cleanerConnection:Destroy()
 		end))
 	else
+		debug.profilebegin(CONTEXT_STR .. "forEachCharacter->forEachPlayer")
 		jani:Add(PlayerUtil.forEachPlayer(SetupPlayer))
+		debug.profileend()
 		jani:Add(Players.PlayerRemoving:Connect(function(plr: Player)
 			local plrId = tostring(plr.UserId)
 			jani:Remove(plrId .. "_CharacterAdded")
@@ -296,11 +331,12 @@ end
 --[=[
 	Takes a function that will be run for every player in the game as well as any future players
 	until the returned connection is disconnected.
-	
+
 	@param func			-- A passed function to be executed for each player, it is given the player as an argument.
 	@return Connection  -- A connection that can be Disconnected or Destroyed to stop method's activities.
 ]=]
 function PlayerUtil.forEachPlayer(func: (player: Player, janitor: Janitor) -> ()): Connection
+	debug.profilebegin(CONTEXT_STR .. "forEachPlayer")
 	assertFunction(func)
 
 	local SetupPlayersList: { Player } = setmetatable({}, WeakTable) :: any
@@ -308,15 +344,19 @@ function PlayerUtil.forEachPlayer(func: (player: Player, janitor: Janitor) -> ()
 	local cleanerConnection = createCleanerConnection(jani)
 
 	local function CheckPlayer(player: Player)
-		if table.find(SetupPlayersList, player) then
-			return
-		end
+		print("Check player")
+		debug.profilebegin(CONTEXT_STR .. "CheckPlayer")
+		if table.find(SetupPlayersList, player) then return end
 		table.insert(SetupPlayersList, player)
 		local plrJani = jani:Add(Janitor.new(), nil, player)
 		plrJani:Add(task.spawn(func, player, plrJani))
+		debug.profileend()
 	end
 
+	debug.profilebegin(CONTEXT_STR .. "forEachPlayer->CheckPlayer")
 	jani:Add(Players.PlayerAdded:Connect(CheckPlayer))
+	debug.profileend()
+
 	jani:Add(Players.PlayerRemoving:Connect(function(player: Player)
 		jani:Remove(player)
 		TableUtil.SwapRemoveFirstValue(SetupPlayersList, player)
@@ -326,6 +366,7 @@ function PlayerUtil.forEachPlayer(func: (player: Player, janitor: Janitor) -> ()
 		CheckPlayer(player)
 	end
 
+	debug.profileend()
 	return cleanerConnection
 end
 
@@ -357,14 +398,21 @@ end
 	Sets up code to auto parent characters to the Characters folder when they spawn.
 	Optionally, a function can be passed to run immediately prior to when a character is added to the folder.
 ]=]
-function PlayerUtil.setupCharacterInitialization(func: (char: Character) -> ()?): any
-	assertFunction(func)
+function PlayerUtil.setupCharacterInitialization(fn: ((plr: Player) -> (char: Character) -> ()?)?): any
+	assertFunction(fn)
 	if isSetupCharacterInitialization then
-		error("Character initialization already setup. Calling this function multiple times is not supported.\nOriginal call: "..tostring(isSetupCharacterInitialization).."\n\nCurrent call: ")
+		error(
+			"Character initialization already setup. Calling this function multiple times is not supported.\nOriginal call: "
+				.. tostring(isSetupCharacterInitialization)
+				.. "\n\nCurrent call: "
+		)
 	end
 	isSetupCharacterInitialization = debug.traceback()
 
 	return PlayerUtil.forEachPlayer(function(plr: Player)
+		local onCharAddedFn = if fn then fn(plr) else nil
+		assertFunction(onCharAddedFn)
+
 		local function onCharAdded(char: Model?)
 			if not char then return end
 			local charactersFolder = PlayerUtil.getCharactersFolder()
@@ -373,11 +421,9 @@ function PlayerUtil.setupCharacterInitialization(func: (char: Character) -> ()?)
 			while char.Parent ~= charactersFolder do
 				char.Parent = charactersFolder
 				task.wait()
-			end 
-
-			if func then
-				func(char :: any)
 			end
+
+			if onCharAddedFn then onCharAddedFn(char :: any) end
 
 			char.Parent = charactersFolder
 		end
@@ -386,6 +432,5 @@ function PlayerUtil.setupCharacterInitialization(func: (char: Character) -> ()?)
 		onCharAdded(plr.Character)
 	end)
 end
-
 
 return table.freeze(PlayerUtil)
