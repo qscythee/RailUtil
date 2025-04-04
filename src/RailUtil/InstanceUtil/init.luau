@@ -15,6 +15,7 @@ local RailUtil = script.Parent
 local TableUtil = require(RailUtil.TblUtil)
 local Promise = require(RailUtil.Parent.Promise)
 local Types = require(RailUtil.RailUtilTypes)
+local spr = require(script.spr)
 
 --// Types //--
 type Promise<T> = Types.Promise
@@ -87,7 +88,7 @@ function InstanceUtil.findFirstChildFromPredicate(
 	predicate: (child: Instance) -> boolean,
 	recurse: boolean?
 ): Instance?
-	local children: {Instance} = if recurse then parent:GetDescendants() else parent:GetChildren()
+	local children: { Instance } = if recurse then parent:GetDescendants() else parent:GetChildren()
 	for i = 1, #children do
 		local child = children[i]
 		if predicate(child) then
@@ -163,7 +164,7 @@ end
 	```
 ]=]
 function InstanceUtil.getDescendantsWhichAre(Parent: Instance, ClassName: string | { string }): { Instance }
-	local ClassNames: {string} = if typeof(ClassName) == "table" then ClassName else { ClassName }
+	local ClassNames: { string } = if typeof(ClassName) == "table" then ClassName else { ClassName }
 	local validDescendants = {}
 	for _, desc in Parent:GetDescendants() do
 		for _, className in ClassNames do
@@ -389,8 +390,11 @@ end
 	```
 ]=]
 function InstanceUtil.getAttachmentsAlignedCFrame(partAttachment: Attachment, targetAttachment: Attachment): CFrame
-    assert(partAttachment:IsA("Attachment") or not targetAttachment:IsA("Attachment"), "Both inputs must be attachments")
-    return targetAttachment.WorldCFrame * partAttachment.CFrame:Inverse()
+	assert(
+		partAttachment:IsA("Attachment") or not targetAttachment:IsA("Attachment"),
+		"Both inputs must be attachments"
+	)
+	return targetAttachment.WorldCFrame * partAttachment.CFrame:Inverse()
 end
 
 --[=[
@@ -405,7 +409,7 @@ end
 	```
 ]=]
 function InstanceUtil.getModelFitDistance(model: Model | BasePart, vpf: ViewportFrame, camera: Camera?): number
-    local _, modelSize
+	local _, modelSize
 	if model:IsA("Model") then
 		_, modelSize = model:GetBoundingBox()
 	else
@@ -458,8 +462,6 @@ function InstanceUtil.cloneChildren(
 	return newChildren
 end
 
-
-
 --[=[
 	Checks to see if the given instance is any of the given classes.
 	@param instance     -- The Instance to check the type of.
@@ -472,7 +474,7 @@ end
 	```
 ]=]
 function InstanceUtil.isClass(instance: Instance, classNames: string | { string }): boolean
-	local ClassNames: {string} = if typeof(classNames) == "table" then classNames else { classNames }
+	local ClassNames: { string } = if typeof(classNames) == "table" then classNames else { classNames }
 	for _, className in ClassNames do
 		if instance:IsA(className) then
 			return true
@@ -587,7 +589,6 @@ function InstanceUtil.playTween(
 	return prom
 end
 
-
 --[=[
 	Takes a track or array of AnimationTracks and plays them all asynchronously.
 	@param tracks       -- The AnimationTrack or array of AnimationTracks to play.
@@ -638,7 +639,6 @@ function InstanceUtil.playTracksAsync(
 		end)
 	end))
 end
-
 
 --[=[
 	Takes an Instance and Emits it and any descendants it has.
@@ -720,7 +720,7 @@ function InstanceUtil.ensureAnimator(Parent: Instance): Animator
 		AnimController.Parent = Parent
 		AnimatorParent = AnimController
 	end
-	
+
 	local Animator = (AnimatorParent :: any):FindFirstChildOfClass("Animator")
 	if not Animator then
 		warn("Failed to Find Animator in Parent", AnimatorParent, "; Consider setting one up at Edit Time.")
@@ -774,5 +774,41 @@ function InstanceUtil.getMass(assembly: Instance): number
 	return mass
 end
 
+--[=[
+	Plays a spring as a promise.
+	@param obj          -- The Instance to play spring on.
+	@param dampingRatio -- The damping ratio of the spring (0-1).
+	@param undampedFrequency -- The undamped frequency of the spring.
+	@param targetProperties  -- The properties to spring.
+	@return Promise     -- A Promise that resolves when the tween has finished.
+	```lua
+	local obj = Instance.new("Part")
+	local dampingRatio = 0.5
+	local undampedFrequency = 3
+	local targetProperties = {
+		Size = Vector3.new(10, 10, 10),
+		Position = Vector3.new(0, 10, 0),
+	}
+
+	InstanceUtil.playSpring(obj, dampingRatio,undampedFrequency, targetProperties):andThen(function(obj)
+		print(`Spring for {obj} has finished playing.`)
+	end)
+	```
+]=]
+function InstanceUtil.playSpring(
+	obj: Instance,
+	dampingRatio: number,
+	undampedFrequency: number,
+	targetProperties: { [string]: any }
+): Promise<Instance>
+	return Promise.new(function(resolve)
+		spr.target(obj, dampingRatio, undampedFrequency, targetProperties)
+		spr.completed(obj, function()
+			return resolve(obj)
+		end)
+	end)
+end
+
+InstanceUtil.spring = spr
 
 return InstanceUtil
